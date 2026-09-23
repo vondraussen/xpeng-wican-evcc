@@ -1,5 +1,5 @@
 const config = require('./config');
-const state = require('./state');
+const { state, save } = require('./state');
 
 function fresh(sig) {
   if (!sig) return false;
@@ -10,13 +10,15 @@ function fresh(sig) {
 // signals have arrived so far. Fields are null when we don't have (fresh)
 // data rather than guessing.
 function getVehicleState() {
-  const soc = state.getSignal('soc');
-  const soh = state.getSignal('soh');
-  const hvVoltage = state.getSignal('hv_voltage');
-  const hvCurrent = state.getSignal('hv_current');
-  const odometer = state.getSignal('odometer');
-  const range = state.getSignal('range');
-  const chargingRaw = state.getSignal('charging');
+  const {
+    soc,
+    soh,
+    hv_voltage: hvVoltage,
+    hv_current: hvCurrent,
+    odometer,
+    range,
+    charging: chargingRaw,
+  } = state.signals;
 
   let chargePowerKw = null;
   if (fresh(hvVoltage) && fresh(hvCurrent)) {
@@ -37,7 +39,7 @@ function getVehicleState() {
   // device goes quiet, and only falls back to 'A' once that's been exceeded
   // (real "the car left" case) - see README "Charging-status caveat".
   const deviceOnline =
-    state.getDeviceLastSeen() && Date.now() - state.getDeviceLastSeen() <= config.signalStaleMs;
+    state.deviceLastSeen && Date.now() - state.deviceLastSeen <= config.signalStaleMs;
 
   // Slow-changing signals (soc, soh, odometer, range) always report their
   // last known value, however old, rather than going null. The WiCAN
@@ -50,7 +52,7 @@ function getVehicleState() {
   // Deliberately NOT applied to hvVoltage/hvCurrent/chargePowerKw - those
   // are instantaneous electrical readings where a stale value could
   // actively misrepresent whether charging is still happening.
-  const lastSeen = state.getDeviceLastSeen();
+  const lastSeen = state.deviceLastSeen;
   const withinHoldWindow = !deviceOnline && lastSeen && Date.now() - lastSeen <= config.statusHoldMs;
 
   function lastKnown(sig) {
@@ -65,13 +67,16 @@ function getVehicleState() {
     status = 'C';
   } else if (deviceOnline) {
     status = 'B';
-  } else if (withinHoldWindow && state.getLastStatus()) {
-    status = state.getLastStatus();
+  } else if (withinHoldWindow && state.lastStatus) {
+    status = state.lastStatus;
     statusHeld = true;
   } else {
     status = 'A';
   }
-  if (status !== state.getLastStatus()) state.setLastStatus(status);
+  if (status !== state.lastStatus) {
+    state.lastStatus = status;
+    save();
+  }
 
   return {
     soc: lastKnown(soc),
@@ -84,9 +89,8 @@ function getVehicleState() {
     status,
     statusHeld,
     dataHeld: !deviceOnline,
-    batteryCapacityKwh: config.batteryCapacityKwh,
     deviceOnline: Boolean(deviceOnline),
-    deviceLastSeen: state.getDeviceLastSeen(),
+    deviceLastSeen: state.deviceLastSeen,
     updatedAt: Date.now(),
   };
 }

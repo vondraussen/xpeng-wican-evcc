@@ -6,7 +6,6 @@ anything else) can poll for SoC, charging status, range, etc.
 
 ```
 XPeng G6 --CAN bus--> WiCAN --HTTP poll--> gateway (this app) --HTTP--> evcc
-                          \--MQTT (optional, currently unused)--/
 ```
 
 ## Status: deployed and running, real data flowing
@@ -21,9 +20,9 @@ curl http://localhost:8080/api/vehicle
 
 Confirmed working end-to-end against a real car.
 
-Code lives in `app/`, config in `app/.env` (copy from `app/.env.example`) and
-`app/config.yaml`, service unit at `/etc/systemd/system/xpeng-wican-evcc.service`.
-To change config: edit those files, then `systemctl restart xpeng-wican-evcc`.
+Code lives in `app/`, config in `app/.env` (copy from `app/.env.example`),
+service unit at `/etc/systemd/system/xpeng-wican-evcc.service`.
+To change config: edit `.env`, then `systemctl restart xpeng-wican-evcc`.
 
 ## How it actually gets data (read this before touching WiCAN's UI)
 
@@ -48,10 +47,7 @@ device/firmware (**v4.51p**):
 
 So: **this gateway polls that endpoint directly over HTTP** instead of
 waiting for WiCAN to push over MQTT. No `Send_to` topic configuration
-needed at all. This is simpler and already proven to work — if you ever get
-MQTT `Send_to` working on your device too, the MQTT ingest path
-(`app/src/mqtt.js`) is still wired up in parallel and will merge into the
-same state, but it's not required.
+and no MQTT broker needed at all.
 
 Config in `app/.env`:
 ```
@@ -71,7 +67,7 @@ ATH1;ATSP6;ATS0;ATM0;ATAT1;ATSH7E0;ATSH704;ATCRA784;ATFCSH704;ATFCSM1;
 ```
 
 `/autopid_data` keys currently coming through and how this gateway maps
-them (see `app/src/httpPoll.js` / `app/config.yaml`):
+them (see `app/src/httpPoll.js`):
 
 | WiCAN key | Mapped to | Status |
 |---|---|---|
@@ -110,7 +106,6 @@ curl http://<wican-ip>/autopid_data                # WiCAN's own raw endpoint, f
   "odometerKm": 2792,
   "rangeKm": null,
   "status": "B",
-  "batteryCapacityKwh": 87.5,
   "deviceOnline": true,
   "deviceLastSeen": 1737100000000,
   "updatedAt": 1737100000123
@@ -129,7 +124,7 @@ No plug/charging-status PID is confirmed working for the G6 yet, so
 `status` is a heuristic (`app/src/decoder.js`):
 1. If you've wired up an explicit `charging` signal, that wins.
 2. Otherwise, if `hvVoltage * hvCurrent` exceeds
-   `chargingPowerThresholdKw` (default 0.2 kW), reports `"C"` — currently
+   `CHARGING_POWER_THRESHOLD_KW` (default 0.2 kW), reports `"C"` — currently
    inactive since `hvVoltage` isn't available yet (see table above).
 3. Otherwise `"B"` whenever the WiCAN is online/reachable, else `"A"`.
 
@@ -167,15 +162,6 @@ validation used to fail whenever the device happened to be asleep.
 a stale current reading could misrepresent whether charging is actively
 happening. `dataHeld: true` in the response means the device is offline and
 those fields are last-known values.
-
-**MQTT status topic gotcha:** the WiCAN publishes
-`{"status":"online"|"offline"}` to `wican/<id>/can/status` (confirmed via
-`mosquitto_sub`) — `"offline"` is announced right as the device goes to
-sleep. `app/src/mqtt.js` only treats an explicit `"online"` payload as a
-sighting; earlier it called `markDeviceSeen()` on *any* message to that
-topic, which meant the `"offline"` announcement itself kept
-`deviceLastSeen` artificially fresh at exactly the moment the device said
-it was going away, defeating the online/offline + hold logic above.
 
 **Why the WiCAN goes offline at all:** checked
 `http://<wican-ip>/restart_tracker/history` on the device itself — of
@@ -230,13 +216,9 @@ find/add a new signal is:
    `/api/debug/signals`), add a mapping in `KEY_MAP` in
    `app/src/httpPoll.js` and a corresponding field in `app/src/decoder.js`.
 
-Raw CAN frame access (`GET /api/debug/frames`, fed by MQTT
-`wican/<id>/can/rx`) is also still wired up if you ever want to
-reverse-engineer PIDs from scratch, but hasn't been needed so far.
-
 ## Operations
 
-Install on a new host (needs Node.js 18+):
+Install on a new host (needs Node.js 20.6+):
 
 ```bash
 git clone https://github.com/vondraussen/xpeng-wican-evcc.git /opt/xpeng-wican-evcc
@@ -251,7 +233,7 @@ sudo systemctl enable --now xpeng-wican-evcc
 Day to day:
 
 ```bash
-systemctl restart xpeng-wican-evcc   # after editing .env / config.yaml
+systemctl restart xpeng-wican-evcc   # after editing .env
 systemctl stop xpeng-wican-evcc
 journalctl -u xpeng-wican-evcc -n 100 --no-pager
 ```
@@ -263,9 +245,7 @@ survives restarts.
 
 The HTTP API has no auth (port 8080), fine on a trusted home LAN — don't
 expose it directly to the internet without a reverse proxy + auth in
-front. The app only connects to your MQTT broker as a client; it doesn't
-run or control the broker. Keep broker credentials in `app/.env`, which is
-git-ignored.
+front.
 
 ## Notes / what's solid vs. what you'll need to verify yourself
 

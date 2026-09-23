@@ -11,38 +11,33 @@ A small Node.js (CommonJS, Express) service that reads XPeng G6 telemetry from a
 ```bash
 cd app
 npm install
-npm start                          # node src/server.js, listens on HTTP_PORT (default 8080)
+npm start                          # node --env-file=.env src/server.js, listens on HTTP_PORT (default 8080)
 curl localhost:8080/api/vehicle    # decoded view
 curl localhost:8080/api/debug/signals
 ```
 
 There are no tests, linter or build step. In production it runs as the systemd service `xpeng-wican-evcc`. After changing code or config, restart it with `systemctl restart xpeng-wican-evcc`, and view logs with `journalctl -u xpeng-wican-evcc -f`.
 
-Config comes from two places, both loaded by `src/config.js`:
-- `app/.env` (git-ignored; copy from `.env.example`) holds connection settings and timing values.
-- `app/config.yaml` holds the MQTT signal units, `chargingPowerThresholdKw` and `batteryCapacityKwh`.
+All config is environment variables, read in `src/config.js`. They come from `app/.env` (git-ignored; copy from `.env.example`), which systemd loads via `EnvironmentFile=` and `npm start` via `--env-file`. There is no dotenv; `express` is the only dependency.
 
 ## Architecture
 
 Data flows **ingest → `state` → `decoder` → routes**:
 
-- **Two ingest paths feed a single signal store.** Both write via `state.setSignal(key, value)` and call `state.markDeviceSeen()`.
-  - `src/httpPoll.js` is the primary path. It polls WiCAN's `/autopid_data` JSON. `KEY_MAP` converts WiCAN keys (`SOC`, `HV_A`, …) to canonical snake_case keys. Keys not in the map are stored lowercased. Per-cell `HV_C_V_nnn` / `HV_T_n` keys are skipped on purpose because their data is garbled.
-  - `src/mqtt.js` is optional and still wired up. It handles `<SIGNAL_TOPIC_PREFIX>/<key>` signals, raw frames from `wican/<id>/can/rx` (these go to a ring buffer for `/api/debug/frames`), and `wican/<id>/can/status`. On the status topic, only an explicit `"online"` payload counts as a sighting. WiCAN publishes `"offline"` as it goes to sleep, and treating that as a sighting breaks the hold logic.
-- **`src/state.js`** is an in-memory singleton that stores `{value, unit, ts}` for each signal, plus `deviceLastSeen` and `lastStatus`. Every write is debounced to `app/data/state.json` so values survive restarts.
+- **`src/httpPoll.js`** is the only ingest path. It `fetch`es WiCAN's `/autopid_data` JSON. `KEY_MAP` converts WiCAN keys (`SOC`, `HV_A`, …) to canonical snake_case keys. Keys not in the map are stored lowercased. Per-cell `HV_C_V_nnn` / `HV_T_n` keys are skipped on purpose because their data is garbled. MQTT ingest was removed; the WiCAN's MQTT `Send_to` never worked on this firmware.
+- **`src/state.js`** exports a plain `state` object (`signals: {key: {value, ts}}`, `deviceLastSeen`, `lastStatus`) and `save()`. Mutate the object directly, then call `save()`, which debounces a write to `app/data/state.json` so values survive restarts.
 - **`src/decoder.js`** is where the domain logic lives. `getVehicleState()` builds the evcc view on every request, and nothing is cached. It hard-codes the canonical keys (`soc`, `soh`, `hv_voltage`, `hv_current`, `odometer`, `range`, `charging`). A new signal therefore needs:
   - a `KEY_MAP` entry in `httpPoll.js`,
-  - a field in `decoder.js`,
-  - and, if evcc should read it, a route in `routes/vehicle.js`.
+  - and a field in `decoder.js`.
 
-  The `field:` names in `config.yaml` aren't read anywhere. The code only uses `unit`, and only on the MQTT path.
+  evcc reads everything from `GET /api/vehicle` with `jq`, so there are no per-field routes. The routes are defined in `src/server.js`.
 
 ## Status and hold semantics (easy to break)
 
 `status` follows the IEC 61851 letters evcc expects: `A` = disconnected, `B` = connected, `C` = charging. Because no plug-state PID is confirmed for the G6, it's a heuristic applied in priority order:
 
 1. A fresh `charging` signal.
-2. `|hvVoltage × hvCurrent| / 1000` above `chargingPowerThresholdKw`, which gives `C`.
+2. `|hvVoltage × hvCurrent| / 1000` above `CHARGING_POWER_THRESHOLD_KW`, which gives `C`.
 3. The device is online, which gives `B`.
 4. The device went offline but is still inside the `STATUS_HOLD_MS` window, which returns the last known status (`statusHeld: true`).
 5. Otherwise `A`.

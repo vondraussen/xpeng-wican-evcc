@@ -9,19 +9,19 @@ vehicles:
 
     soc:
       source: http
-      uri: http://<gateway-host>:8080/api/vehicle/soc
+      uri: http://<gateway-host>:8080/api/vehicle
       jq: .soc
       cache: 60s
 
     status: # "A" = disconnected, "B" = connected, "C" = charging
       source: http
-      uri: http://<gateway-host>:8080/api/vehicle/status
+      uri: http://<gateway-host>:8080/api/vehicle
       jq: .status
       cache: 30s
 
     odometer:
       source: http
-      uri: http://<gateway-host>:8080/api/vehicle/odometer
+      uri: http://<gateway-host>:8080/api/vehicle
       jq: .odometerKm
       cache: 5m
 
@@ -29,6 +29,6 @@ vehicles:
     # fails validation on null. Uncomment once /api/vehicle shows a value.
     # range:
     #   source: http
-    #   uri: http://<gateway-host>:8080/api/vehicle/range
+    #   uri: http://<gateway-host>:8080/api/vehicle
     #   jq: .rangeKm
     #   cache: 60s

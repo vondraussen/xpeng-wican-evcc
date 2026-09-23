@@ -1,17 +1,14 @@
 {
   "name": "xpeng-wican-evcc",
   "version": "1.0.0",
-  "description": "Ingests WiCAN MQTT telemetry from an EV and exposes it as an HTTP API for evcc and other consumers",
+  "description": "Exposes XPeng G6 telemetry from a WiCAN OBD dongle as an HTTP API for evcc",
   "main": "src/server.js",
   "license": "MIT",
   "type": "commonjs",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node --env-file=.env src/server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "mqtt": "^5.10.1",
-    "js-yaml": "^4.1.0",
-    "dotenv": "^16.4.5"
+    "express": "^4.19.2"
   }
 }
