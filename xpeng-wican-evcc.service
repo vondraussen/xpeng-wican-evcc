@@ -1,0 +1,19 @@
+# Install: see README "Operations". Adjust the paths if you cloned elsewhere
+# than /opt/xpeng-wican-evcc, and set User= to an account that owns that
+# directory (the app writes app/data/state.json).
+[Unit]
+Description=xpeng-wican-evcc - WiCAN to evcc HTTP API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/xpeng-wican-evcc/app
+EnvironmentFile=/opt/xpeng-wican-evcc/app/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target

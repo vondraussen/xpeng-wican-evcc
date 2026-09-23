@@ -236,6 +236,20 @@ reverse-engineer PIDs from scratch, but hasn't been needed so far.
 
 ## Operations
 
+Install on a new host (needs Node.js 18+):
+
+```bash
+git clone https://github.com/vondraussen/xpeng-wican-evcc.git /opt/xpeng-wican-evcc
+cd /opt/xpeng-wican-evcc/app
+npm install --omit=dev
+cp .env.example .env              # then set WICAN_HTTP_URL etc.
+sudo cp ../xpeng-wican-evcc.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now xpeng-wican-evcc
+```
+
+Day to day:
+
 ```bash
 systemctl restart xpeng-wican-evcc   # after editing .env / config.yaml
 systemctl stop xpeng-wican-evcc
