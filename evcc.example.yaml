@@ -1,0 +1,34 @@
+# evcc vehicle config for xpeng-wican-evcc. Paste into your evcc.yaml
+# (or copy the fields into a custom vehicle in evcc's UI).
+# Replace <gateway-host> with the machine running xpeng-wican-evcc.
+vehicles:
+  - name: xpeng_g6
+    type: custom
+    title: XPeng G6
+    capacity: 87.5 # usable kWh - G6 ships with ~66 or ~87.5 depending on trim
+
+    soc:
+      source: http
+      uri: http://<gateway-host>:8080/api/vehicle/soc
+      jq: .soc
+      cache: 60s
+
+    status: # "A" = disconnected, "B" = connected, "C" = charging
+      source: http
+      uri: http://<gateway-host>:8080/api/vehicle/status
+      jq: .status
+      cache: 30s
+
+    odometer:
+      source: http
+      uri: http://<gateway-host>:8080/api/vehicle/odometer
+      jq: .odometerKm
+      cache: 5m
+
+    # No working range PID for the G6 yet - rangeKm is always null, and evcc
+    # fails validation on null. Uncomment once /api/vehicle shows a value.
+    # range:
+    #   source: http
+    #   uri: http://<gateway-host>:8080/api/vehicle/range
+    #   jq: .rangeKm
+    #   cache: 60s
