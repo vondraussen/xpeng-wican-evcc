@@ -25,10 +25,8 @@ vehicles:
       jq: .odometerKm
       cache: 5m
 
-    # No working range PID for the G6 yet - rangeKm is always null, and evcc
-    # fails validation on null. Uncomment once /api/vehicle shows a value.
-    # range:
-    #   source: http
-    #   uri: http://<gateway-host>:8080/api/vehicle
-    #   jq: .rangeKm
-    #   cache: 60s
+    range: # SOC x WLTP_RANGE_KM, matches the car's WLTP display
+      source: http
+      uri: http://<gateway-host>:8080/api/vehicle
+      jq: .rangeKm
+      cache: 60s

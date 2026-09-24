@@ -9,7 +9,7 @@ function fresh(sig) {
 // Derives an evcc-compatible view of vehicle state from whatever raw
 // signals have arrived so far.
 function getVehicleState() {
-  const { soc, soh, hv_v: hvVoltage, hv_a: hvCurrent, odometer, range, charging } = state.signals;
+  const { soc, soh, hv_v: hvVoltage, hv_a: hvCurrent, odometer, charging } = state.signals;
 
   let chargePowerKw = null;
   if (fresh(hvVoltage) && fresh(hvCurrent)) {
@@ -50,7 +50,9 @@ function getVehicleState() {
     hvCurrent: fresh(hvCurrent) ? hvCurrent.value : null,
     chargePowerKw: chargePowerKw !== null ? Number(chargePowerKw.toFixed(2)) : null,
     odometerKm: odometer?.value ?? null,
-    rangeKm: range?.value ?? null,
+    // Matches the car's WLTP range display (SOC x rated range), not "dynamic".
+    // ponytail: ignores SOH; multiply by soh/100 if it drifts once SOH < 100%.
+    rangeKm: soc ? Math.round((soc.value * config.wltpRangeKm) / 100) : null,
     status,
     statusHeld,
     dataHeld: !deviceOnline,

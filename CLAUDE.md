@@ -25,7 +25,7 @@ Data flows **ingest → `state` → `decoder` → routes**:
 
 - **`src/httpPoll.js`** is the only ingest path. It `fetch`es WiCAN's `/autopid_data` JSON. WiCAN keys are stored lowercased (`SOC` → `soc`, `HV_V` → `hv_v`). Per-cell `HV_C_V_nnn` / `HV_T_n` keys are skipped on purpose because their data is garbled. MQTT ingest was removed; the WiCAN's MQTT `Send_to` never worked on this firmware.
 - **`src/state.js`** exports a plain `state` object (`signals: {key: {value, ts}}`, `deviceLastSeen`, `lastStatus`) and `save()`. Mutate the object directly, then call `save()`, which writes `app/data/state.json` so values survive restarts.
-- **`src/decoder.js`** is where the domain logic lives. `getVehicleState()` builds the evcc view on every request, and nothing is cached. It hard-codes the canonical keys (`soc`, `soh`, `hv_v`, `hv_a`, `odometer`, `range`, `charging`). A new signal therefore only needs a field in `decoder.js`, read under its lowercased WiCAN key.
+- **`src/decoder.js`** is where the domain logic lives. `getVehicleState()` builds the evcc view on every request, and nothing is cached. It hard-codes the canonical keys (`soc`, `soh`, `hv_v`, `hv_a`, `odometer`, `charging`); `rangeKm` is computed from `soc`. A new signal therefore only needs a field in `decoder.js`, read under its lowercased WiCAN key.
 
   evcc reads everything from `GET /api/vehicle` with `jq`, so there are no per-field routes. The routes are defined in `src/server.js`.
 

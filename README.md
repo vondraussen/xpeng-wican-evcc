@@ -78,6 +78,7 @@ them (see `app/src/httpPoll.js`):
 | `HV_C_V_MAX` / `HV_C_V_MIN` | `hv_c_v_max` / `hv_c_v_min` (raw) | ✅ working |
 | `HV_V` (pack voltage) | `hvVoltage` | ❌ not currently present in the response — PID not returning data |
 | `SOH` | `soh` | ❌ not currently present |
+| — (computed) | `rangeKm` | ✅ `SOC × WLTP_RANGE_KM / 100` (default 510), matches the car's WLTP range display (428 km at 84.0%). No range PID matches any display: BMS `221118` reads ~12% below WLTP, "dynamic" range is computed in the head unit. VCU `220313` ("RANGE_EST" in [xpcardata](https://github.com/stevelea/xpcardata/blob/main/docs/XPENG_G6_PIDs.md)) is **not** range on this car. SOH is ignored for now |
 | per-cell `HV_C_V_001..192` / `HV_T_1..34` | — (skipped) | ⚠️ present but garbled (bad byte alignment), ignored on purpose |
 
 `chargePowerKw` stays `null` until `HV_V` starts returning data (needs
