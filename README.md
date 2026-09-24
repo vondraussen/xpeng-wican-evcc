@@ -210,11 +210,11 @@ find/add a new signal is:
    pack voltage, or try the community profile above for more).
 2. Check `curl http://<wican-ip>/autopid_data` — if the key appears
    with a plausible value, it'll automatically flow into this gateway
-   (`app/src/httpPoll.js` auto-maps any known key, and passes through
-   unknown ones lowercased for visibility in `/api/debug/signals`).
+   (`app/src/httpPoll.js` stores every key lowercased, visible in
+   `/api/debug/signals`).
 3. To make it show up in the *decoded* `/api/vehicle` view (not just raw
-   `/api/debug/signals`), add a mapping in `KEY_MAP` in
-   `app/src/httpPoll.js` and a corresponding field in `app/src/decoder.js`.
+   `/api/debug/signals`), add a field in `app/src/decoder.js` reading
+   the lowercased key.
 
 ## Operations
 
@@ -223,7 +223,6 @@ Install on a new host (needs Node.js 20.6+):
 ```bash
 git clone https://github.com/vondraussen/xpeng-wican-evcc.git /opt/xpeng-wican-evcc
 cd /opt/xpeng-wican-evcc/app
-npm install --omit=dev
 cp .env.example .env              # then set WICAN_HTTP_URL etc.
 sudo cp ../xpeng-wican-evcc.service /etc/systemd/system/
 sudo systemctl daemon-reload

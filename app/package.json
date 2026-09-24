@@ -2,13 +2,9 @@
   "name": "xpeng-wican-evcc",
   "version": "1.0.0",
   "description": "Exposes XPeng G6 telemetry from a WiCAN OBD dongle as an HTTP API for evcc",
-  "main": "src/server.js",
   "license": "MIT",
   "type": "commonjs",
   "scripts": {
     "start": "node --env-file=.env src/server.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
   }
 }

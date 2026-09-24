@@ -1,23 +1,10 @@
 const config = require('./config');
 const { state, save } = require('./state');
 
-// WiCAN's own /autopid_data endpoint only includes keys for PIDs that
-// successfully returned data on the last poll cycle - silently omits
-// failing ones. Keys we care about get mapped to the canonical signal
-// names used by decoder.js; per-cell voltage/temp arrays
-// (HV_C_V_001..192, HV_T_1..34) are skipped as noise (unreliable byte
-// alignment observed in testing) but HV_C_V_MAX/MIN and HV_T_MAX/MIN are
-// kept.
-const KEY_MAP = {
-  SOC: 'soc',
-  SOH: 'soh',
-  ODOMETER: 'odometer',
-  HV_V: 'hv_voltage',
-  HV_A: 'hv_current',
-  RANGE: 'range',
-  CHARGING: 'charging',
-};
-
+// WiCAN's /autopid_data only includes keys for PIDs that answered on the
+// last cycle. Keys are stored lowercased (SOC -> soc, HV_V -> hv_v).
+// Per-cell HV_C_V_001..192 / HV_T_1..34 are skipped (unreliable byte
+// alignment); HV_C_V_MAX/MIN and HV_T_MAX/MIN are kept.
 const SKIP_PATTERN = /^HV_C_V_\d+$|^HV_T_\d+$/;
 
 async function fetchOnce() {
@@ -28,7 +15,7 @@ async function fetchOnce() {
     let count = 0;
     for (const [key, value] of Object.entries(data)) {
       if (SKIP_PATTERN.test(key) || typeof value !== 'number') continue;
-      state.signals[KEY_MAP[key] || key.toLowerCase()] = { value, ts: Date.now() };
+      state.signals[key.toLowerCase()] = { value, ts: Date.now() };
       count++;
     }
     if (count > 0) {
