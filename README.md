@@ -1,5 +1,9 @@
 # xpeng-wican-evcc
 
+<img width="408" height="906" alt="image" src="https://github.com/user-attachments/assets/a983ec1c-b803-4726-aeab-872b020b1e13" />
+<img width="408" height="906" alt="image" src="https://github.com/user-attachments/assets/d9845844-efea-4aaa-b973-8e62621d4a39" />
+
+
 Reads vehicle telemetry from a WiCAN CAN-bus/OBD gateway (connected to an
 XPeng G6), decodes it, and exposes it as a small HTTP API that evcc (or
 anything else) can poll for SoC, charging status, range, etc.
